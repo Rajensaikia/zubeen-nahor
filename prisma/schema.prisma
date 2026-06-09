@@ -1,0 +1,324 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  email               String             @unique
+  username            String             @unique
+  passwordHash        String
+  displayName         String
+  bio                 String?
+  role                String             @default("USER") // USER, ADMIN
+  avatarUrl           String?
+  totalTrees          Int                @default(0)
+  isVerified          Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  posts               Post[]
+  comments            Comment[]
+  likes               Like[]
+  
+  // Self-relation for followers/following
+  followers           Follower[]         @relation("FollowingRelation")
+  following           Follower[]         @relation("FollowerRelation")
+
+  plantationRecords   PlantationRecord[] @relation("UserPlantations")
+  verifiedRecords     PlantationRecord[] @relation("AdminVerifications")
+  
+  eventsOrganised     Event[]
+  groupsCreated       Group[]
+  
+  notifications       Notification[]     @relation("UserNotifications")
+  sentNotifications   Notification[]     @relation("SentNotifications")
+  
+  reports             Report[]           @relation("UserReports")
+  submittedReports    Report[]           @relation("ReporterReports")
+  
+  badges              Badge[]
+  adminLogs           AdminLog[]
+  isSuspended         Boolean            @default(false)
+  certificates        Certificate[]
+  eventRegistrations  EventRegistration[]
+  groupMemberships    GroupMember[]
+  groupMessages       GroupMessage[]
+  eventMessages       EventMessage[]
+}
+
+model Post {
+  id            String    @id @default(uuid())
+  caption       String?
+  imageUrl      String?
+  videoUrl      String?
+  location      String?
+  district      String?
+  species       String?
+  treeCount     Int       @default(0)
+  likesCount    Int       @default(0)
+  commentsCount Int       @default(0)
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  comments      Comment[]
+  likes         Like[]
+  reports       Report[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model Follower {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model PlantationRecord {
+  id            String   @id @default(uuid())
+  name          String
+  mobile        String
+  district      String
+  village       String
+  location      String
+  treeCount     Int      @default(0)
+  species       String
+  date          DateTime
+  imageUrl      String?
+  notes         String?
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  user          User     @relation("UserPlantations", fields: [userId], references: [id], onDelete: Cascade)
+
+  verifiedBy    String?
+  verifiedByUser User?   @relation("AdminVerifications", fields: [verifiedBy], references: [id], onDelete: SetNull)
+}
+
+model Event {
+  id             String   @id @default(uuid())
+  title          String
+  description    String
+  date           DateTime
+  location       String
+  district       String
+  imageUrl       String?
+  attendeesCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  chiefGuest     String?
+  treesPlanted   Int      @default(0)
+  status         String   @default("UPCOMING") // UPCOMING, COMPLETED, CANCELLED
+  schedule       String?  // Newline-separated schedule items
+  documents      String?  // Comma-separated title:url pairs
+  memories       String?  // Story/memories description for completed event
+  mediaUrls      String?  // Comma-separated gallery media URLs
+
+  organiserId    String
+  organiser      User     @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+  registrations  EventRegistration[]
+  messages       EventMessage[]
+}
+
+model Group {
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  type         String   // NGO, School, College, Village
+  imageUrl     String?
+  membersCount Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pastWorks    String?
+  memories     String?
+  nextPlan     String?
+  mediaUrls    String?  // Comma-separated list of media URLs (images or videos)
+
+  creatorId    String
+  creator      User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  members      GroupMember[]
+  messages     GroupMessage[]
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  type        String   // LIKE, COMMENT, FOLLOW, EVENT, APPROVAL, REJECTION
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  senderId    String?
+  sender      User?    @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reason      String
+  status      String   @default("PENDING") // PENDING, RESOLVED
+  createdAt   DateTime @default(now())
+
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId      String   // Reported user
+  user        User     @relation("UserReports", fields: [userId], references: [id], onDelete: Cascade)
+  
+  reporterId  String   // Reporting user
+  reporter    User     @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  name        String   // Green Warrior, Nature Protector, Zubeen Nahor Champion
+  code        String   // WARRIOR, PROTECTOR, CHAMPION
+  description String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AdminLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+
+  adminId   String
+  admin     User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model Certificate {
+  id             String   @id @default(uuid())
+  recipientName  String
+  awardDate      String
+  dedicationNote String?
+  badgeName      String?
+  createdAt      DateTime @default(now())
+
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EventRegistration {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  role      String   @default("MEMBER") // MEMBER, ADMIN
+  createdAt DateTime @default(now())
+
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model GroupMessage {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EventMessage {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Song {
+  id        String   @id @default(uuid())
+  title     String
+  artist    String   @default("Zubeen Garg")
+  album     String?
+  audioUrl  String
+  coverUrl  String?
+  duration  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TimelineMilestone {
+  id          String   @id @default(uuid())
+  year        String
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SongQuote {
+  id        String   @id @default(uuid())
+  title     String
+  lyric     String
+  meaning   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
