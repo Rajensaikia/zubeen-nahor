@@ -40,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
   };
 
   const menuItems = [
-    { name: t('nav_home'), href: '/', icon: Home },
+    { name: t('nav_home'), href: '/home', icon: Home },
     { name: t('nav_feed'), href: '/feed', icon: Rss },
     { name: t('nav_music'), href: '/music', icon: Heart },
     { name: t('nav_map'), href: '/map', icon: Map },
@@ -70,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
             <Menu className="h-6 w-6" />
           </button>
           
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/home" className="flex items-center gap-2 group">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105">
               <Leaf className="h-5 w-5" />
             </div>
@@ -183,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
               const Icon = item.icon;
               return (
                 <Link
-                  key={item.href}
+                  key={item.name}
                   href={item.href}
                   className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shrink-0 ${
                     isActive

@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Premium Eco HSL Palette - Light Mode */
-  --background: 130 18% 97%;       /* Soft sage-tinted white */
-  --foreground: 130 35% 12%;       /* Rich deep forest green-black */
-  --card: 0 0% 100%;               /* Pure white card */
-  --card-foreground: 130 35% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 130 35% 12%;
-  --primary: 142 72% 29%;          /* Luxurious emerald pine green */
-  --primary-foreground: 138 20% 98%;
-  --secondary: 138 35% 94%;        /* Soft organic leaf tint */
-  --secondary-foreground: 142 70% 18%;
-  --muted: 130 12% 92%;            /* Serene clay grey-green */
-  --muted-foreground: 130 15% 42%;  /* Calm forest shadow */
-  --accent: 24 85% 45%;            /* Terracotta clay red/orange */
-  --accent-foreground: 0 0% 100%;
+  /* Green-Blue Unified Theme */
+  --background: 215 45% 7%;        /* Deep nocturnal navy-green space */
+  --foreground: 160 40% 92%;       /* Luminous soft mint/teal mist */
+  --card: 215 35% 11%;             /* Deep navy/slate-blue card */
+  --card-foreground: 160 40% 92%;
+  --popover: 215 35% 11%;
+  --popover-foreground: 160 40% 92%;
+  --primary: 162 82% 43%;          /* Vibrant Emerald Green */
+  --primary-foreground: 215 45% 7%;
+  --secondary: 215 85% 58%;        /* Electric Royal Blue */
+  --secondary-foreground: 0 0% 100%;
+  --muted: 215 25% 15%;
+  --muted-foreground: 212 18% 70%;
+  --accent: 195 90% 50%;           /* Luminous Sky/Cyan Blue */
+  --accent-foreground: 215 45% 7%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 130 16% 89%;           /* Muted grass border */
-  --input: 130 16% 89%;
-  --ring: 142 72% 29%;
+  --border: 215 25% 17%;
+  --input: 215 25% 17%;
+  --ring: 162 82% 43%;
   
-  --radius-lg: 1.25rem;            /* Soft, highly curved corners for a modern feel */
+  --radius-lg: 1.25rem;
   --radius-md: 0.875rem;
   --radius-sm: 0.5rem;
 
@@ -44,26 +44,26 @@
 }
 
 .dark {
-  /* Premium Eco HSL Palette - Dark Mode */
-  --background: 130 35% 6%;        /* Deep nocturnal forest green-black */
-  --foreground: 130 25% 90%;       /* Soft glowing morning sage mist */
-  --card: 130 25% 9%;              /* Dark pine bark shade */
-  --card-foreground: 130 25% 90%;
-  --popover: 130 25% 9%;
-  --popover-foreground: 130 25% 90%;
-  --primary: 142 70% 45%;          /* Vibrant bio-luminescent emerald green */
-  --primary-foreground: 130 35% 5%;
-  --secondary: 130 18% 13%;        /* Forest evening mist shade */
-  --secondary-foreground: 142 70% 45%;
-  --muted: 130 15% 12%;            /* Muted moss bark */
-  --muted-foreground: 130 12% 65%;  /* Faded green needles */
-  --accent: 24 90% 55%;            /* Radiant glowing sunfire clay */
-  --accent-foreground: 130 35% 5%;
-  --destructive: 0 62.8% 30.6%;
+  /* Copy variables exactly to prevent any light/dark theme operation discrepancies */
+  --background: 215 45% 7%;
+  --foreground: 160 40% 92%;
+  --card: 215 35% 11%;
+  --card-foreground: 160 40% 92%;
+  --popover: 215 35% 11%;
+  --popover-foreground: 160 40% 92%;
+  --primary: 162 82% 43%;
+  --primary-foreground: 215 45% 7%;
+  --secondary: 215 85% 58%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 215 25% 15%;
+  --muted-foreground: 212 18% 70%;
+  --accent: 195 90% 50%;
+  --accent-foreground: 215 45% 7%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 130 15% 15%;           /* Soft organic dark boundary */
-  --input: 130 15% 15%;
-  --ring: 142 70% 45%;
+  --border: 215 25% 17%;
+  --input: 215 25% 17%;
+  --ring: 162 82% 43%;
 }
 
 @theme {
@@ -87,36 +87,23 @@
   --radius-sm: var(--radius-sm);
 }
 
-body {
+body, .dark body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-x: hidden;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(21, 128, 61, 0.03) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(194, 65, 12, 0.02) 0px, transparent 50%);
-}
-
-.dark body {
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(34, 197, 94, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.03) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 55%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.06) 0px, transparent 55%);
 }
 
 /* Glassmorphism custom classes with rich borders and glow effects */
-.glass {
-  background: rgba(255, 255, 255, 0.65);
+.glass, .dark .glass {
+  background: rgba(11, 30, 40, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(21, 128, 61, 0.08);
-}
-
-.dark .glass {
-  background: rgba(18, 28, 18, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.08);
 }
 
 /* Beautiful aesthetic card with smooth interactive lifting & gradient glowing borders */
@@ -125,7 +112,7 @@ body {
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.02), 0 8px 16px -8px rgba(21, 128, 61, 0.02);
+  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.02), 0 8px 16px -8px rgba(16, 185, 129, 0.02);
 }
 
 .aesthetic-card:hover {
@@ -133,19 +120,19 @@ body {
   border-color: hsla(var(--primary), 0.25);
   box-shadow: 
     0 12px 30px -10px rgba(0, 0, 0, 0.04), 
-    0 16px 20px -12px rgba(21, 128, 61, 0.05),
+    0 16px 20px -12px rgba(16, 185, 129, 0.05),
     0 0 0 1px hsla(var(--primary), 0.05);
 }
 
 /* Premium gradient overlays */
 .text-gradient-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-accent {
-  background: linear-gradient(135deg, hsl(var(--accent)) 0%, #ea580c 100%);
+  background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--secondary)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

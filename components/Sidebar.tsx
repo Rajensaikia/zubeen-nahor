@@ -31,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { t } = useLanguage();
 
   const menuItems = [
-    { name: t('nav_home'), href: '/', icon: Home },
+    { name: t('nav_home'), href: '/home', icon: Home },
     { name: t('nav_feed'), href: '/feed', icon: Rss },
     { name: t('nav_music'), href: '/music', icon: Heart },
     { name: t('nav_map'), href: '/map', icon: Map },
@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             
             return (
               <Link
-                key={item.href}
+                key={item.name}
                 href={item.href}
                 onClick={onClose}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
