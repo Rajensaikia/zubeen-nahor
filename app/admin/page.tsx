@@ -241,6 +241,22 @@ export default function AdminDashboard() {
     }
   }, [user]);
 
+  // Fetch posts for moderation
+  async function fetchPostsList() {
+    setLoadingPosts(true);
+    try {
+      const res = await fetch('/api/admin/posts');
+      const data = await res.json();
+      if (res.ok) {
+        setPostsList(data.posts || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'feed') {
       fetchPostsList();
@@ -715,21 +731,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch posts for moderation
-  const fetchPostsList = async () => {
-    setLoadingPosts(true);
-    try {
-      const res = await fetch('/api/admin/posts');
-      const data = await res.json();
-      if (res.ok) {
-        setPostsList(data.posts || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
+
 
   // Moderate post status (approve / reject)
   const handleModeratePostStatus = async (postId: string, status: 'APPROVED' | 'REJECTED') => {

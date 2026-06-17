@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Leaf, User, Image, Rss, Award, Edit3, Save, X, Calendar, MapPin, Users, Bell, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 interface Badge {
   id: string;
@@ -68,13 +69,35 @@ interface InAppNotification {
 }
 
 export default function Profile() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
+  );
+}
+
+function ProfileContent() {
   const { user: authUser, refreshUser } = useAuth();
   const { t, language } = useLanguage();
+
+  const searchParams = useSearchParams();
+  const userId = searchParams.get('userId') || '';
+  const isMe = !userId || (authUser && authUser.id === userId);
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [postsCount, setPostsCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
+  const [myFollowingIds, setMyFollowingIds] = useState<Set<string>>(new Set());
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  
   const [badges, setBadges] = useState<Badge[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [plantations, setPlantations] = useState<Plantation[]>([]);
@@ -83,7 +106,7 @@ export default function Profile() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'gallery' | 'badges' | 'groups_drives' | 'notifications'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'gallery' | 'badges' | 'groups_drives' | 'notifications' | 'followers' | 'following'>('posts');
   
   // Edit Profile States
   const [isEditing, setIsEditing] = useState(false);
@@ -103,15 +126,20 @@ export default function Profile() {
     }
   };
 
-  const fetchProfileData = async () => {
+  const fetchProfileData = async (targetId: string) => {
     try {
-      const res = await fetch('/api/user/profile');
+      setLoading(true);
+      const url = targetId ? `/api/user/profile?userId=${targetId}` : '/api/user/profile';
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
         setProfileUser(data.user);
         setPostsCount(data.postsCount);
         setFollowersCount(data.followersCount);
         setFollowingCount(data.followingCount);
+        setFollowers(data.followers || []);
+        setFollowing(data.following || []);
+        setIsFollowing(data.isFollowing || false);
         setBadges(data.badges);
         setPosts(data.posts);
         setPlantations(data.plantations);
@@ -122,6 +150,19 @@ export default function Profile() {
         setEditName(data.user.displayName);
         setEditBio(data.user.bio || '');
         setEditAvatarUrl(data.user.avatarUrl || '');
+
+        // Fetch logged-in user following list to resolve follow states on cards
+        if (targetId && authUser) {
+          const myProfileRes = await fetch('/api/user/profile');
+          const myProfileData = await myProfileRes.json();
+          if (myProfileRes.ok && myProfileData.following) {
+            setMyFollowingIds(new Set(myProfileData.following.map((f: any) => f.id)));
+          }
+        } else {
+          if (data.following) {
+            setMyFollowingIds(new Set(data.following.map((f: any) => f.id)));
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -143,15 +184,65 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    fetchProfileData();
-    fetchNotifications();
-  }, [authUser]);
-
-  useEffect(() => {
-    if (activeTab === 'notifications') {
+    fetchProfileData(userId);
+    if (isMe) {
       fetchNotifications();
     }
-  }, [activeTab]);
+  }, [userId, authUser]);
+
+  useEffect(() => {
+    if (isMe && activeTab === 'notifications') {
+      fetchNotifications();
+    }
+  }, [activeTab, isMe]);
+
+  useEffect(() => {
+    if (!isMe && activeTab === 'notifications') {
+      setActiveTab('posts');
+    }
+  }, [isMe, activeTab]);
+
+  const handleToggleFollow = async () => {
+    if (!authUser || isMe || !profileUser) return;
+    setFollowLoading(true);
+    try {
+      const res = await fetch('/api/user/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followingId: profileUser.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsFollowing(data.followed);
+        setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
+        const profileRes = await fetch(`/api/user/profile?userId=${profileUser.id}`);
+        const profileData = await profileRes.json();
+        if (profileRes.ok) {
+          setFollowers(profileData.followers || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handleToggleFollowUser = async (targetUserId: string, isCurrentlyFollowing: boolean) => {
+    if (!authUser || authUser.id === targetUserId) return;
+    try {
+      const res = await fetch('/api/user/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followingId: targetUserId }),
+      });
+      if (res.ok) {
+        fetchProfileData(userId);
+      }
+    } catch (error) {
+      console.error('Error toggling follow for list user:', error);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -164,7 +255,7 @@ export default function Profile() {
       if (res.ok) {
         setIsEditing(false);
         await refreshUser(); // Update global auth context
-        await fetchProfileData(); // Reload local profile states
+        await fetchProfileData(userId); // Reload local profile states
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -263,39 +354,67 @@ export default function Profile() {
               <span>•</span>
               <span>{postsCount} Posts</span>
               <span>•</span>
-              <span>{followersCount} Followers</span>
+              <button
+                onClick={() => setActiveTab('followers')}
+                className={`hover:text-primary transition-colors font-bold ${activeTab === 'followers' ? 'text-primary' : ''}`}
+              >
+                {followersCount} Followers
+              </button>
+              <span>•</span>
+              <button
+                onClick={() => setActiveTab('following')}
+                className={`hover:text-primary transition-colors font-bold ${activeTab === 'following' ? 'text-primary' : ''}`}
+              >
+                {followingCount} Following
+              </button>
             </div>
           </div>
         </div>
 
         {/* Action Button */}
         <div className="shrink-0 pt-2">
-          {isEditing ? (
-            <div className="flex gap-2">
+          {isMe ? (
+            isEditing ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="rounded-full border border-border bg-card p-2 text-muted-foreground hover:bg-muted"
+                  title="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 rounded-full bg-primary hover:bg-secondary text-primary-foreground font-semibold px-4 py-2 text-xs shadow-sm"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  <span>{saving ? 'Saving...' : t('profile_save_btn')}</span>
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => setIsEditing(false)}
-                className="rounded-full border border-border bg-card p-2 text-muted-foreground hover:bg-muted"
-                title="Cancel"
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-card hover:bg-muted text-foreground font-semibold px-4 py-2 text-xs shadow-sm transition-colors"
               >
-                <X className="h-4 w-4" />
+                <Edit3 className="h-3.5 w-3.5 text-primary" />
+                <span>{t('profile_edit_btn')}</span>
               </button>
-              <button
-                onClick={handleSaveProfile}
-                disabled={saving}
-                className="flex items-center gap-1.5 rounded-full bg-primary hover:bg-secondary text-primary-foreground font-semibold px-4 py-2 text-xs shadow-sm"
-              >
-                <Save className="h-3.5 w-3.5" />
-                <span>{saving ? 'Saving...' : t('profile_save_btn')}</span>
-              </button>
-            </div>
+            )
           ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-card hover:bg-muted text-foreground font-semibold px-4 py-2 text-xs shadow-sm transition-colors"
-            >
-              <Edit3 className="h-3.5 w-3.5 text-primary" />
-              <span>{t('profile_edit_btn')}</span>
-            </button>
+            authUser && (
+              <button
+                onClick={handleToggleFollow}
+                disabled={followLoading}
+                className={`flex items-center gap-1.5 rounded-full font-bold px-5 py-2 text-xs shadow-sm transition-colors ${
+                  isFollowing
+                    ? 'bg-muted border border-border text-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200'
+                    : 'bg-primary hover:bg-secondary text-primary-foreground shadow-md shadow-primary/10'
+                }`}
+              >
+                <span>{isFollowing ? 'Following' : 'Follow'}</span>
+              </button>
+            )
           )}
         </div>
       </section>
@@ -311,7 +430,7 @@ export default function Profile() {
           }`}
         >
           <Rss className="h-4 w-4" />
-          <span>My Posts</span>
+          <span>{isMe ? 'My Posts' : 'Posts'}</span>
         </button>
 
         <button
@@ -347,25 +466,47 @@ export default function Profile() {
           }`}
         >
           <Users className="h-4 w-4" />
-          <span>Joined Groups & Drives</span>
+          <span>{isMe ? 'Joined Groups & Drives' : 'Groups & Drives'}</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors relative ${
-            activeTab === 'notifications'
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          <Bell className="h-4 w-4" />
-          <span>Notifications Feed</span>
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground shadow-sm animate-pulse">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+        {isMe && (
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors relative ${
+              activeTab === 'notifications'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Bell className="h-4 w-4" />
+            <span>Notifications Feed</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground shadow-sm animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {activeTab === 'followers' && (
+          <button
+            onClick={() => setActiveTab('followers')}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors bg-primary text-primary-foreground shadow-sm"
+          >
+            <Users className="h-4 w-4" />
+            <span>Followers ({followers.length})</span>
+          </button>
+        )}
+
+        {activeTab === 'following' && (
+          <button
+            onClick={() => setActiveTab('following')}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors bg-primary text-primary-foreground shadow-sm"
+          >
+            <Users className="h-4 w-4" />
+            <span>Following ({following.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs Content */}
@@ -573,6 +714,140 @@ export default function Profile() {
               </div>
             ) : (
               <p className="text-xs text-center text-muted-foreground py-8 border border-dashed border-border bg-card rounded-2xl">No notifications in your inbox.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'followers' && (
+          <div className="aesthetic-card rounded-3xl p-5 sm:p-6 space-y-4">
+            <h3 className="font-bold text-foreground text-sm uppercase tracking-wider text-primary border-b border-border pb-3 flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              <span>Followers ({followers.length})</span>
+            </h3>
+            {followers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {followers.map((fUser) => {
+                  const isListMe = authUser && authUser.id === fUser.id;
+                  const isWeFollowing = myFollowingIds.has(fUser.id);
+                  
+                  return (
+                    <div key={fUser.id} className="rounded-2xl border border-border bg-muted/10 p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={fUser.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${fUser.username}`}
+                          alt={fUser.displayName}
+                          className="h-10 w-10 rounded-full object-cover border border-primary/20 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="block font-bold text-foreground text-xs sm:text-sm truncate">
+                            {fUser.displayName}
+                          </span>
+                          <span className="block text-[10px] text-muted-foreground truncate">
+                            @{fUser.username} • {fUser.totalTrees || 0} Trees
+                          </span>
+                          {fUser.bio && (
+                            <span className="block text-[10px] text-muted-foreground truncate mt-0.5 max-w-[180px]">
+                              {fUser.bio}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={`/profile?userId=${fUser.id}`}
+                          className="rounded-full border border-border bg-card hover:bg-muted text-foreground font-semibold px-3 py-1.5 text-[10px] shadow-sm text-center"
+                        >
+                          View Profile
+                        </Link>
+                        {authUser && !isListMe && (
+                          <button
+                            onClick={() => handleToggleFollowUser(fUser.id, isWeFollowing)}
+                            className={`rounded-full px-3 py-1.5 text-[10px] font-bold shadow-sm transition-colors ${
+                              isWeFollowing
+                                ? 'bg-muted border border-border text-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200'
+                                : 'bg-primary hover:bg-secondary text-primary-foreground'
+                            }`}
+                          >
+                            {isWeFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-center text-muted-foreground py-8 border border-dashed border-border bg-card rounded-2xl">
+                No followers yet.
+              </p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'following' && (
+          <div className="aesthetic-card rounded-3xl p-5 sm:p-6 space-y-4">
+            <h3 className="font-bold text-foreground text-sm uppercase tracking-wider text-primary border-b border-border pb-3 flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              <span>Following ({following.length})</span>
+            </h3>
+            {following.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {following.map((fUser) => {
+                  const isListMe = authUser && authUser.id === fUser.id;
+                  const isWeFollowing = myFollowingIds.has(fUser.id);
+
+                  return (
+                    <div key={fUser.id} className="rounded-2xl border border-border bg-muted/10 p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={fUser.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${fUser.username}`}
+                          alt={fUser.displayName}
+                          className="h-10 w-10 rounded-full object-cover border border-primary/20 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="block font-bold text-foreground text-xs sm:text-sm truncate">
+                            {fUser.displayName}
+                          </span>
+                          <span className="block text-[10px] text-muted-foreground truncate">
+                            @{fUser.username} • {fUser.totalTrees || 0} Trees
+                          </span>
+                          {fUser.bio && (
+                            <span className="block text-[10px] text-muted-foreground truncate mt-0.5 max-w-[180px]">
+                              {fUser.bio}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={`/profile?userId=${fUser.id}`}
+                          className="rounded-full border border-border bg-card hover:bg-muted text-foreground font-semibold px-3 py-1.5 text-[10px] shadow-sm text-center"
+                        >
+                          View Profile
+                        </Link>
+                        {authUser && !isListMe && (
+                          <button
+                            onClick={() => handleToggleFollowUser(fUser.id, isWeFollowing)}
+                            className={`rounded-full px-3 py-1.5 text-[10px] font-bold shadow-sm transition-colors ${
+                              isWeFollowing
+                                ? 'bg-muted border border-border text-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200'
+                                : 'bg-primary hover:bg-secondary text-primary-foreground'
+                            }`}
+                          >
+                            {isWeFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-center text-muted-foreground py-8 border border-dashed border-border bg-card rounded-2xl">
+                Not following anyone yet.
+              </p>
             )}
           </div>
         )}

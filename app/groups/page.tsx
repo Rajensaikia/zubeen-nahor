@@ -175,7 +175,7 @@ function GroupsContent() {
     }
   }, [user, joinGroupId, isJoinAction, loading, joinedGroupIds]);
 
-  const handleJoinGroup = async (groupId: string) => {
+  async function handleJoinGroup(groupId: string) {
     if (!user) return;
     const isJoined = joinedGroupIds.includes(groupId);
     const action = isJoined ? 'LEAVE' : 'JOIN';

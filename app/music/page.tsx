@@ -245,9 +245,11 @@ export default function MusicPlayerPage() {
                   <div
                     key={i}
                     style={{
-                      animation: isPlaying
-                        ? `equalizer 1.2s ease-in-out infinite alternate`
-                        : 'none',
+                      animationName: isPlaying ? 'equalizer' : 'none',
+                      animationDuration: '1.2s',
+                      animationTimingFunction: 'ease-in-out',
+                      animationIterationCount: 'infinite',
+                      animationDirection: 'alternate',
                       animationDelay: `${i * 0.15}s`,
                       height: isPlaying ? '24px' : '4px',
                     }}

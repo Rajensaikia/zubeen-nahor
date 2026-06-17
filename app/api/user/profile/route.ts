@@ -41,6 +41,57 @@ export async function GET(req: Request) {
     const followersCount = await prisma.follower.count({ where: { followingId: targetUserId } });
     const followingCount = await prisma.follower.count({ where: { followerId: targetUserId } });
 
+    // Check if the authenticated user is currently following the target profile user
+    let isFollowing = false;
+    const authUser = await getAuthenticatedUser(req).catch(() => null);
+    if (authUser && authUser.id !== targetUserId) {
+      const followRecord = await prisma.follower.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: authUser.id,
+            followingId: targetUserId,
+          },
+        },
+      });
+      isFollowing = !!followRecord;
+    }
+
+    // Fetch the list of followers
+    const followers = await prisma.follower.findMany({
+      where: { followingId: targetUserId },
+      include: {
+        follower: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            bio: true,
+            totalTrees: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Fetch the list of following users
+    const following = await prisma.follower.findMany({
+      where: { followerId: targetUserId },
+      include: {
+        following: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            bio: true,
+            totalTrees: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
     const badges = await prisma.badge.findMany({
       where: { userId: targetUserId },
     });
@@ -94,6 +145,9 @@ export async function GET(req: Request) {
       postsCount,
       followersCount,
       followingCount,
+      isFollowing,
+      followers: followers.map((f) => f.follower),
+      following: following.map((f) => f.following),
       badges,
       posts,
       plantations,

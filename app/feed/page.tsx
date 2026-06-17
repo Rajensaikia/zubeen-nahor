@@ -29,6 +29,7 @@ interface Comment {
   content: string;
   createdAt: string;
   user: {
+    id: string;
     username: string;
     displayName: string;
     avatarUrl?: string;
@@ -93,6 +94,16 @@ function FeedContent() {
   const [districtFilter, setDistrictFilter] = useState('');
   const [feedLoading, setFeedLoading] = useState(true);
 
+  // Search States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{
+    users: any[];
+    groups: any[];
+    events: any[];
+  } | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   // Form Modal / View States
   const [showForm, setShowForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -146,6 +157,39 @@ function FeedContent() {
   useEffect(() => {
     fetchPosts();
   }, [sort, districtFilter]);
+
+  // Handle Search Input Change
+  const handleSearchChange = async (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim()) {
+      setSearchResults(null);
+      setShowSearchResults(false);
+      return;
+    }
+    setSearchLoading(true);
+    setShowSearchResults(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setSearchResults({
+          users: data.users || [],
+          groups: data.groups || [],
+          events: data.events || [],
+        });
+      }
+    } catch (err) {
+      console.error('Error searching:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults(null);
+    setShowSearchResults(false);
+  };
 
   // Handle post submit
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -347,6 +391,152 @@ function FeedContent() {
           )}
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="relative flex items-center bg-card border border-border/80 rounded-2xl shadow-sm hover:border-primary/50 transition-colors p-1 pr-3">
+            <div className="pl-3.5 pr-2 flex items-center pointer-events-none text-muted-foreground">
+              <Search className="h-4 w-4" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search for people, community groups, events..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-transparent border-0 py-2.5 px-1 text-sm text-foreground focus:outline-none focus:ring-0 placeholder:text-muted-foreground/60"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="rounded-full p-1 hover:bg-muted text-muted-foreground transition-colors ml-1"
+                title="Clear Search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Search Results Dropdown/Overlay */}
+          <AnimatePresence>
+            {showSearchResults && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-xl z-20 max-h-[480px] overflow-y-auto p-4 space-y-4"
+              >
+                {searchLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  </div>
+                ) : (
+                  <>
+                    {/* People Results */}
+                    <div>
+                      <h4 className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/60 pb-1.5 mb-2">People</h4>
+                      {searchResults && searchResults.users.length > 0 ? (
+                        <div className="space-y-2">
+                          {searchResults.users.map((sUser) => (
+                            <Link
+                              key={sUser.id}
+                              href={`/profile?userId=${sUser.id}`}
+                              onClick={clearSearch}
+                              className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors gap-3"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <img
+                                  src={sUser.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${sUser.username}`}
+                                  alt={sUser.displayName}
+                                  className="h-9 w-9 rounded-full object-cover border border-primary/20 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-xs text-foreground truncate">{sUser.displayName}</span>
+                                    {sUser.isVerified && (
+                                      <span className="flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white text-[7px] font-bold">✓</span>
+                                    )}
+                                  </div>
+                                  <span className="block text-[10px] text-muted-foreground truncate">@{sUser.username} • {sUser.totalTrees || 0} Trees</span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-semibold text-primary shrink-0 bg-primary/10 px-2 py-0.5 rounded-full">View Profile</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground/80 py-1">No people found.</p>
+                      )}
+                    </div>
+
+                    {/* Communities Results */}
+                    <div>
+                      <h4 className="text-xs font-bold text-accent uppercase tracking-wider border-b border-border/60 pb-1.5 mb-2">Communities</h4>
+                      {searchResults && searchResults.groups.length > 0 ? (
+                        <div className="space-y-2">
+                          {searchResults.groups.map((sGroup) => (
+                            <Link
+                              key={sGroup.id}
+                              href="/groups"
+                              onClick={clearSearch}
+                              className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors gap-3"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <img
+                                  src={sGroup.imageUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=100'}
+                                  alt={sGroup.name}
+                                  className="h-9 w-9 rounded-xl object-cover border border-border shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <span className="font-semibold text-xs text-foreground truncate block">{sGroup.name}</span>
+                                  <span className="block text-[10px] text-muted-foreground truncate">{sGroup.type} • {sGroup.membersCount || 1} Members</span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-semibold text-accent shrink-0 bg-accent/10 px-2 py-0.5 rounded-full">Explore Groups</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground/80 py-1">No groups found.</p>
+                      )}
+                    </div>
+
+                    {/* Events Results */}
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider border-b border-border/60 pb-1.5 mb-2">Events</h4>
+                      {searchResults && searchResults.events.length > 0 ? (
+                        <div className="space-y-2">
+                          {searchResults.events.map((sEvent) => (
+                            <Link
+                              key={sEvent.id}
+                              href="/events"
+                              onClick={clearSearch}
+                              className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors gap-3"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <img
+                                  src={sEvent.imageUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=100'}
+                                  alt={sEvent.title}
+                                  className="h-9 w-9 rounded-xl object-cover border border-border shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <span className="font-semibold text-xs text-foreground truncate block">{sEvent.title}</span>
+                                  <span className="block text-[10px] text-muted-foreground truncate">{sEvent.location} • {new Date(sEvent.date).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-semibold text-amber-600 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full">See Events</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground/80 py-1">No events found.</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* Sorting and Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-card border border-border/80 p-2.5 rounded-2xl shadow-sm">
           {/* Sort tabs */}
@@ -416,7 +606,10 @@ function FeedContent() {
                 >
                   {/* User profile header */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <Link
+                      href={`/profile?userId=${post.user.id}`}
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    >
                       <img
                         src={post.user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${post.user.username}`}
                         alt={post.user.displayName}
@@ -429,14 +622,18 @@ function FeedContent() {
                             <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white text-[8px]">✓</span>
                           )}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
-                          @{post.user.username} • {new Date(post.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'as-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
+                        <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
+                          <span>@{post.user.username}</span>
+                          <span>•</span>
+                          <span>
+                            {new Date(post.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'as-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
                         </p>
                       </div>
-                    </div>
+                    </Link>
 
                     {/* Verification Status Badge (Only shows if treeCount > 0) */}
                     {post.treeCount > 0 && (
@@ -548,14 +745,18 @@ function FeedContent() {
                         {post.comments.length > 0 ? (
                           post.comments.map((comment) => (
                             <div key={comment.id} className="flex gap-2.5 items-start text-xs bg-muted/40 p-2.5 rounded-xl border border-border/30">
-                              <img
-                                src={comment.user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.user.username}`}
-                                alt={comment.user.displayName}
-                                className="h-6 w-6 rounded-full object-cover"
-                              />
+                              <Link href={`/profile?userId=${comment.user.id}`} className="shrink-0 hover:opacity-80 transition-opacity">
+                                <img
+                                  src={comment.user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.user.username}`}
+                                  alt={comment.user.displayName}
+                                  className="h-6 w-6 rounded-full object-cover"
+                                />
+                              </Link>
                               <div className="flex-1 min-w-0">
-                                <p className="font-bold text-foreground">
-                                  {comment.user.displayName}{' '}
+                                <p className="font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                                  <Link href={`/profile?userId=${comment.user.id}`} className="hover:underline">
+                                    {comment.user.displayName}
+                                  </Link>
                                   <span className="text-[10px] text-muted-foreground font-normal">@{comment.user.username}</span>
                                 </p>
                                 <p className="text-muted-foreground mt-0.5 whitespace-pre-line">{comment.content}</p>
