@@ -13,9 +13,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const sanitizedUsername = username.toLowerCase().replace(/\s+/g, '');
+
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { username }],
+        OR: [
+          { email: normalizedEmail },
+          { username: sanitizedUsername }
+        ],
       },
     });
 
@@ -29,11 +35,11 @@ export async function POST(req: Request) {
     const passwordHash = hashPassword(password);
     const user = await prisma.user.create({
       data: {
-        email,
-        username: username.toLowerCase().replace(/\s+/g, ''),
+        email: normalizedEmail,
+        username: sanitizedUsername,
         passwordHash,
         displayName,
-        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${username}`,
+        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${sanitizedUsername}`,
       },
     });
 
