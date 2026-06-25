@@ -70,9 +70,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
             <Menu className="h-6 w-6" />
           </button>
           
-          <Link href="/home" className="flex items-center gap-2 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105">
-              <Leaf className="h-5 w-5" />
+          <Link href="/home" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-10 w-10 overflow-hidden rounded-xl border border-primary/20 bg-muted shadow-md transition-transform group-hover:scale-105">
+              <img
+                src="/images/logo.jpg"
+                alt="Zubeen Nahor Logo"
+                className="h-full w-full object-cover"
+              />
             </div>
             <div>
               <span className="text-xl font-bold tracking-tight text-primary">জুবিন নাহৰ</span>

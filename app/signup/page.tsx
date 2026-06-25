@@ -66,8 +66,12 @@ export default function Signup() {
       >
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md mb-2">
-            <Leaf className="h-6 w-6" />
+          <div className="inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-muted shadow-md mb-2">
+            <img
+              src="/images/logo.jpg"
+              alt="Zubeen Nahor Logo"
+              className="h-full w-full object-cover"
+            />
           </div>
           <h2 className="text-2xl font-black text-foreground">{t('nav_signup')}</h2>
           <p className="text-xs text-muted-foreground">Register to join the tree plantation tribute movement.</p>

@@ -66,8 +66,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         {/* Mobile Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border mb-4 md:hidden">
-          <div className="flex items-center gap-2">
-            <Leaf className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/images/logo.jpg"
+              alt="Zubeen Nahor Logo"
+              className="h-6 w-6 rounded-lg object-cover border border-primary/20"
+            />
             <span className="font-bold text-foreground">Navigation</span>
           </div>
           <button
